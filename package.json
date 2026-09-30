@@ -4,7 +4,7 @@
   "private": true,
   "description": "Bot privado de orçamento mensal e caixinhas no Telegram, pronto para Vercel e Neon.",
   "engines": {
-    "node": "20.x"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "node server.js",
