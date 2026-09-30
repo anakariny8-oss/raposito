@@ -137,6 +137,7 @@ app.post("/api/bot/reset", async (req, res) => {
     await sql`DELETE FROM savings_goals`;
     await sql`DELETE FROM monthly_configs`;
     await sql`UPDATE bot_profile SET owner_user_id = NULL, owner_chat_id = NULL, delete_pending = false WHERE singleton_id = 1`;
+    telegramHandler.clearContexts?.();
     return res.json({ ok: true, message: "Dados do bot reiniciados com sucesso!" });
   } catch (error) {
     return res.status(500).json({ ok: false, error: error.message });

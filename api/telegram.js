@@ -546,7 +546,7 @@ async function handleText(sql, message) {
     ? parseIncomeText(text)
     : null;
 
-  const mentionsIncomePattern = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale\s*alimenta|vale\s*refei|\bvr\b|\bva\b|renda|ganho|recebi|ganhei|entrou)/i.test(text);
+  const mentionsIncomePattern = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale\s*alimenta|vale\s*refei|\bvr\b|\bva\b|renda|ganho|recebi|ganhei|entrou|freela|bico|extra|investimento|rendimento|dividendo|b[oô]nus|comiss[aã]o|pens[aã]o|aluguel)/i.test(text);
 
   if (command?.name === "cancelar" && config.setup_step) {
     await sql`UPDATE monthly_configs SET setup_step = NULL WHERE month_key = ${monthKey}::date`;
@@ -556,6 +556,149 @@ async function handleText(sql, message) {
   if (config.setup_step && !text.startsWith("/")) {
     return continueSetup(sql, config, monthKey, text);
   }
+
+  const envelopes = await getEnvelopes(sql, monthKey);
+  const parsedCandidateExpense = (!command || ["gastei", "paguei", "comprei"].includes(command.name))
+    ? parseExpenseText(text, envelopes.map((item) => item.name))
+    : null;
+
+  // Conversational greetings
+  const isGreeting = /^(?:oi|ol[aá]|bom\s+dia|boa\s+tarde|boa\s+noite|e\s+a[ií]|opa|fala\s+a[ií]|hey|hello)[!.]?$/i.test(text);
+  if (isGreeting) {
+    return "🦊 Olá! Eu sou o Raposito, seu assistente de orçamento e caixinhas.\n\nComo posso te ajudar hoje?\n• Registrar ganhos: “3500 salário e 800 alimentação” ou “recebi 800 alimentação”\n• Registrar gastos: “gastei 50 almoço” ou “uber 25”\n• Acrescentar: “acrescente 800 alimentação” ou “acrescente caixinha mercado 800”\n• Consultar: /saldo, /renda ou /caixinhas.";
+  }
+
+  // Conversational thanks
+  const isThanks = /^(?:obrigad[oa]|valeu|show|perfeito|beleza|ok|t[aá]\s+bom|combinado|entendi)[!.]?$/i.test(text);
+  if (isThanks) {
+    return "🦊 De nada! Sempre à disposição. Qualquer despesa, ganho ou ajuste de caixinha, é só mandar aqui.";
+  }
+
+  // Conversational help / how it works
+  const isHowWorks = /^(?:como\s+funciona|o\s+que\s+voc[eê]\s+faz|quem\s+[eé]\s+voc[eê]|como\s+usar|me\s+ajuda)[?.]?$/i.test(text);
+  if (isHowWorks) {
+    return "🦊 Eu sou o Raposito! Te ajudo a controlar seu orçamento pelo Telegram:\n\n1️⃣ Ganhos e Rendas: diga “3500 salário e 800 alimentação” ou “recebi 800 alimentação”.\n2️⃣ Gastos: diga “gastei 50 almoço” ou “uber 25”.\n3️⃣ Acrescentar: diga “acrescente 800 alimentação”, “acrescente caixinha mercado 800” ou apenas “acrescente isso”.\n4️⃣ Consultas: use /saldo, /renda, /caixinhas e /metas.";
+  }
+
+  // Handle "acrescente isso" / "adicione isso" / "pode acrescentar"
+  const isAcrescenteIsso = /^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescente|acrescentar|adicione|adicionar|coloque|colocar|inclua|incluir|some|somar|bota|botar|insira|inserir|registre|registrar)(?:\s+(?:isso|isso\s+a[ií]|a[ií]))?(?:\s+por\s+favor)?[.!]?$/i.test(text);
+
+  if (isAcrescenteIsso) {
+    const ctx = chatContexts.get(chatId);
+    if (ctx && ctx.parsedIncome && ctx.parsedIncome.items && ctx.parsedIncome.items.length > 0) {
+      for (const item of ctx.parsedIncome.items) {
+        await sql`
+          INSERT INTO incomes (amount_cents, source, received_at)
+          VALUES (${item.amountCents}, ${item.source}, ${today}::date)
+        `;
+      }
+      const allIncomes = await sql`
+        SELECT id, amount_cents, source, received_at
+        FROM incomes
+        WHERE received_at >= ${monthKey}::date AND received_at < (${monthKey}::date + INTERVAL '1 month')
+      `;
+      const totalIncomeCents = allIncomes.reduce((acc, r) => acc + Number(r.amount_cents || 0), 0);
+      const fixed = Number(config.fixed_cents || 0);
+      const savings = Number(config.savings_cents || 0);
+      let updatedLimit = totalIncomeCents - savings;
+      if (updatedLimit <= 0) updatedLimit = totalIncomeCents;
+
+      await sql`
+        UPDATE monthly_configs
+        SET income_cents = ${totalIncomeCents}, spending_limit_cents = ${updatedLimit}
+        WHERE month_key = ${monthKey}::date
+      `;
+      if (config.spending_limit_cents !== null && config.spending_limit_cents !== undefined) {
+        await replaceEnvelopes(sql, monthKey, defaultEnvelopes(updatedLimit, fixed));
+      }
+      chatContexts.delete(chatId);
+      const itemsDesc = ctx.parsedIncome.items.map(i => `${formatBRL(i.amountCents)} (${i.source})`).join(", ");
+      return `🦊 Feito! Acrescentei ${itemsDesc} aos seus ganhos!\n\nRenda total do mês: ${formatBRL(totalIncomeCents)}.\nTeto total de gastos atualizado para: ${formatBRL(updatedLimit)}.\n\nConsulte /renda para ver todos os ganhos ou /saldo para o resumo.`;
+    }
+
+    if (ctx && ctx.parsedExpense && ctx.parsedExpense.amountCents && ctx.parsedExpense.category) {
+      await sql`
+        INSERT INTO expenses (amount_cents, category, description, spent_at)
+        VALUES (${ctx.parsedExpense.amountCents}, ${ctx.parsedExpense.category}, ${ctx.parsedExpense.description || ""}, ${today}::date)
+      `;
+      chatContexts.delete(chatId);
+      return `🦊 Feito! Acrescentei a despesa de ${formatBRL(ctx.parsedExpense.amountCents)} em ${ctx.parsedExpense.category}.\nConsulte /saldo para ver o resumo.`;
+    }
+
+    if (ctx && ctx.mentionsIncome) {
+      return "🦊 Entendido! Para eu acrescentar na sua renda, envie os valores correspondentes, por exemplo:\n• “3500 salário e 800 alimentação”\n• “salário 3500 auxílio alimentação 800”\n• Ou diga um por um: “acrescente 800 alimentação”\n\nEnvie agora os valores que eu registro imediatamente!";
+    }
+
+    return "🦊 O que você deseja acrescentar?\nDiga o que gostaria de registrar, por exemplo:\n• Um ganho ou renda: “acrescente 800 alimentação” ou “acrescente 500 freela”\n• Um gasto: “acrescente 50 almoço” ou “acrescente uber 25”\n• Uma caixinha: “acrescente caixinha mercado 800”\n• Uma meta: “acrescente meta Viagem 1200 2026-12-20”\n\nEnvie o que deseja acrescentar agora que eu anoto para você!";
+  }
+
+  // Handle "acrescente [conteúdo]" / "adicione [conteúdo]" / "coloque [conteúdo]"
+  const addPrefixMatch = text.match(/^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescente|acrescentar|adicione|adicionar|coloque|colocar|inclua|incluir|some|somar|bota|botar|insira|inserir|registre|registrar)(?:\s+(?:isso|isso\s+a[ií]|a[ií]))?(?:\s*[:,-])?\s+(.+)$/i);
+  if (addPrefixMatch) {
+    const cleanAction = addPrefixMatch[1].trim();
+
+    // Check if adding to caixinha (envelope)
+    const caixinhaDirect = cleanAction.match(/^(?:mais\s+)?(?:uma\s+)?(?:caixinha|envelope)\s+(.+)$/i);
+    if (caixinhaDirect) {
+      return setEnvelope(sql, monthKey, caixinhaDirect[1], config);
+    }
+
+    const caixinhaIncrement = cleanAction.match(/^(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)\s+(?:na|para\s+a|no)\s+(?:caixinha|envelope)\s+(.+)$/i)
+      || cleanAction.match(/(?:na|para\s+a|no)\s+(?:caixinha|envelope)\s+(.+?)\s+(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)$/i);
+    if (caixinhaIncrement) {
+      const amountToAdd = parseMoneyCents(caixinhaIncrement[1] || caixinhaIncrement[2]);
+      const targetName = (caixinhaIncrement[1] && caixinhaIncrement[2] ? (cleanAction.includes(caixinhaIncrement[1]) && cleanAction.indexOf(caixinhaIncrement[1]) === 0 ? caixinhaIncrement[2] : caixinhaIncrement[1]) : (caixinhaIncrement[2] || caixinhaIncrement[1])).trim().toLowerCase();
+      if (amountToAdd !== null && targetName) {
+        const envList = await getEnvelopes(sql, monthKey);
+        const existing = envList.find((item) => normalizeText(item.name) === normalizeText(targetName));
+        const newLimit = (existing ? Number(existing.limit_cents) : 0) + amountToAdd;
+        const nameToUse = existing ? existing.name : targetName;
+        return setEnvelope(sql, monthKey, `${nameToUse} ${newLimit / 100}`, config);
+      }
+    }
+
+    // Check if adding to meta (savings goal)
+    const goalDirect = cleanAction.match(/^meta\s+(.+)$/i);
+    if (goalDirect) {
+      return createOrUpdateGoal(sql, goalDirect[1], today);
+    }
+    const goalIncrement = cleanAction.match(/^(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)\s+(?:na|para\s+a)\s+meta\s+(.+)$/i)
+      || cleanAction.match(/(?:na|para\s+a)\s+meta\s+(.+?)\s+(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)$/i);
+    if (goalIncrement) {
+      const amountToAdd = parseMoneyCents(goalIncrement[1] || goalIncrement[2]);
+      const targetGoal = (cleanAction.indexOf("meta") < cleanAction.indexOf(goalIncrement[1] || "") ? (goalIncrement[1] || goalIncrement[2]) : (goalIncrement[2] || goalIncrement[1])).trim();
+      if (amountToAdd !== null && targetGoal) {
+        return addToGoal(sql, `${amountToAdd / 100} ${targetGoal}`);
+      }
+    }
+
+    // Check if income
+    const parsedAddIncome = parseIncomeText(cleanAction);
+    const hasIncomeClue = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale|vr|va|renda|ganho|freela|bico|extra|comiss[aã]o|b[oô]nus)/i.test(cleanAction);
+    const hasExpenseClue = /(?:gasto|despesa|paguei|comprei|almo[cç]o|jantar|lanche|uber|t[aá]xi|gasolina|farm[aá]cia)/i.test(cleanAction);
+
+    if (parsedAddIncome && parsedAddIncome.items && parsedAddIncome.items.length > 0 && (hasIncomeClue || !hasExpenseClue)) {
+      return addIncome(sql, monthKey, today, cleanAction);
+    }
+
+    // Check if expense
+    const parsedAddExpense = parseExpenseText(cleanAction, envelopes.map((item) => item.name));
+    if (parsedAddExpense && parsedAddExpense.amountCents && parsedAddExpense.category) {
+      if (config.spending_limit_cents === null || config.spending_limit_cents === undefined) {
+        return "Antes de registrar gastos, defina seu orçamento com /configurar ou /limite valor.";
+      }
+      return addExpense(sql, monthKey, today, cleanAction);
+    }
+  }
+
+  // Save context for following interactions
+  chatContexts.set(chatId, {
+    text,
+    parsedIncome: parsedCandidateIncome,
+    parsedExpense: parsedCandidateExpense,
+    mentionsIncome: mentionsIncomePattern,
+    timestamp: Date.now(),
+  });
 
   // Natural explanation if user asks or talks about their income sources without numbers
   if (mentionsIncomePattern && (!parsedCandidateIncome || !parsedCandidateIncome.items.length) && !text.startsWith("/") && !/^(?:gastei|paguei|comprei)\b/i.test(text)) {
@@ -634,11 +777,8 @@ async function handleText(sql, message) {
     return `Removi o último lançamento: ${formatBRL(latest[0].amount_cents)} em ${latest[0].category}. Consulte /saldo para conferir.`;
   }
 
-  const envelopes = await getEnvelopes(sql, monthKey);
   const isExpenseKeyword = (command && ["gastei", "paguei", "comprei"].includes(command.name)) || /^(?:hoje\s+)?(?:gastei|paguei|comprei)\b/i.test(text);
-  const parsedCandidate = (!command || ["gastei", "paguei", "comprei"].includes(command.name))
-    ? parseExpenseText(text, envelopes.map((item) => item.name))
-    : null;
+  const parsedCandidate = parsedCandidateExpense;
 
   if (isExpenseKeyword || (parsedCandidate && parsedCandidate.category && !text.startsWith("/"))) {
     if (config.spending_limit_cents === null || config.spending_limit_cents === undefined) {
@@ -714,5 +854,8 @@ handler.getEnvelopes = getEnvelopes;
 handler.spendingByCategory = spendingByCategory;
 handler.ensureMonth = ensureMonth;
 handler.listGoals = listGoals;
+handler.clearContexts = function() {
+  chatContexts.clear();
+};
 
 module.exports = handler;
