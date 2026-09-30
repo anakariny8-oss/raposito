@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "build": "echo 'No build step required'",
+    "build": "node -e \"console.log('Build completed')\"",
     "test": "node --test",
     "set-webhook": "node scripts/set-webhook.js"
   },

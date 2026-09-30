@@ -153,9 +153,13 @@ app.use((req, res) => {
   res.sendFile(path.join(websiteDir, "index.html"));
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const HOST = "0.0.0.0";
 
-app.listen(PORT, HOST, () => {
-  console.log(`Telegram Caixinhas Bot running at http://${HOST}:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, HOST, () => {
+    console.log(`Telegram Caixinhas Bot running at http://${HOST}:${PORT}`);
+  });
+}
+
+module.exports = app;
