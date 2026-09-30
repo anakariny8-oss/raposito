@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f4ec">
+  <title>Caixinhas — seu orçamento pessoal, sem complicação</title>
+  <meta name="description" content="Registre gastos pelo Telegram, acompanhe seu orçamento do mês e planeje objetivos com caixinhas simples e ajustáveis.">
+  <meta name="keywords" content="orçamento pessoal, controle de gastos, caixinhas, Telegram, finanças pessoais">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Caixinhas">
+  <meta property="og:title" content="Caixinhas — seu orçamento pessoal, sem complicação">
+  <meta property="og:description" content="Anote um gasto, veja o que ainda cabe no mês e planeje seus objetivos com mais clareza.">
+  <meta name="twitter:card" content="summary">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="site-header" id="topo">
+    <div class="container header-inner">
+      <a class="brand" href="#topo" aria-label="Caixinhas, início">
+        <svg class="brand-mark" viewBox="0 0 48 48" role="img" aria-label="Símbolo Caixinhas">
+          <rect x="4" y="7" width="40" height="34" rx="11" fill="currentColor" opacity=".12"/>
+          <path d="M13 17h10v14H13zM25 17h10v8H25zM25 27h10v4H25z" fill="currentColor"/>
+          <path d="M13 14.5h22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+        </svg>
+        <span>caixinhas</span>
+      </a>
+
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">
+        <span class="menu-toggle-lines" aria-hidden="true"></span>
+        <span class="sr-only">Abrir navegação</span>
+      </button>
+
+      <nav class="primary-nav" id="primary-nav" aria-label="Navegação principal">
+        <a href="#como-funciona">Como funciona</a>
+        <a href="#caixinhas">Caixinhas</a>
+        <a href="#comandos">Comandos</a>
+        <a href="#privacidade">Privacidade</a>
+      </nav>
+
+      <a class="button button-small button-dark header-cta" href="#comecar">
+        Como ativar
+        <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11M10 5l5 5-5 5"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <section class="hero section-space">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <div class="status-pill"><span class="status-dot"></span> Projeto pessoal · configuração necessária</div>
+          <p class="eyebrow">Seu dinheiro, com mais clareza</p>
+          <h1>Um mês mais leve.<br><span>Uma caixinha de cada vez.</span></h1>
+          <p class="hero-lede">Anote os gastos pelo Telegram, veja quanto ainda cabe no orçamento e planeje objetivos — sem planilhas complicadas.</p>
+          <div class="hero-actions">
+            <a class="button button-dark" href="#como-funciona">Veja como funciona <span aria-hidden="true">↘</span></a>
+            <a class="text-link" href="#comandos">Explorar os comandos <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="hero-reassurance">
+            <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg> Sem acesso ao banco</span>
+            <span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 10 4 4 8-9"/></svg> Sem movimentar dinheiro</span>
+          </div>
+        </div>
+
+        <div class="hero-visual" aria-label="Demonstração ilustrativa de uma conversa com o bot">
+          <div class="visual-orbit orbit-one"></div>
+          <div class="visual-orbit orbit-two"></div>
+          <div class="chat-card">
+            <div class="chat-card-top">
+              <div class="chat-avatar" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><rect x="5" y="7" width="38" height="34" rx="10" fill="currentColor" opacity=".18"/><path d="M13 17h9v14h-9zM24 17h10v8H24zM24 27h10v4H24z" fill="currentColor"/></svg>
+              </div>
+              <div class="chat-person"><strong>Caixinhas</strong><span>assistente pessoal</span></div>
+              <span class="telegram-mark" aria-label="Telegram">
+                <svg viewBox="0 0 24 24" role="img" aria-label="Ícone de conversa"><path d="M4 5.5h16v12H11l-5.5 3v-3H4z"/><path d="M8 10h8M8 13h5"/></svg>
+              </span>
+            </div>
+            <div class="chat-date"><span></span> Exemplo ilustrativo · sem dados reais <span></span></div>
+            <div class="chat-message message-user">gastei R$ 50 no almoço</div>
+            <div class="chat-message message-bot">
+              <span class="message-kicker">Despesa anotada</span>
+              <strong>R$ 50,00 <span>· Mercado</span></strong>
+              <div class="message-rule"></div>
+              <div class="message-result"><span>Ainda cabe no mês</span><b>R$ 1.240</b></div>
+            </div>
+            <div class="goal-preview">
+              <div class="goal-preview-top"><span class="goal-icon" aria-hidden="true">↗</span><div><span>Caixinha de objetivo</span><strong>Viagem para SP</strong></div><span class="goal-more" aria-hidden="true">•••</span></div>
+              <div class="goal-progress"><span></span></div>
+              <div class="goal-progress-label"><span>R$ 340 guardados</span><b>R$ 900</b></div>
+            </div>
+          </div>
+          <span class="floating-note note-top"><span class="note-check">✓</span> simples de acompanhar</span>
+          <span class="floating-note note-bottom"><span class="note-spark">✳</span> sem julgamento</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="trust-strip" aria-label="Princípios do projeto">
+      <div class="container trust-inner">
+        <span><i class="trust-icon trust-lock" aria-hidden="true"></i> Privado para uma pessoa</span>
+        <span><i class="trust-icon trust-paper" aria-hidden="true"></i> Só registra o que você envia</span>
+        <span><i class="trust-icon trust-hand" aria-hidden="true"></i> Você decide; o bot calcula</span>
+      </div>
+    </section>
+
+    <section class="section-space how-section" id="como-funciona">
+      <div class="container">
+        <div class="section-heading section-heading-row">
+          <div>
+            <p class="eyebrow">Poucos passos, mais contexto</p>
+            <h2>Organizar pode ser simples.</h2>
+          </div>
+          <p>O bot transforma pequenas anotações em uma visão clara do mês — sem pedir acesso às suas contas.</p>
+        </div>
+        <div class="steps-grid">
+          <article class="step-card">
+            <span class="step-number">01</span>
+            <div class="step-icon icon-income" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M9 11h22v19H9zM14 7h12M14 17h12M14 22h7"/><circle cx="27" cy="26" r="5"/></svg></div>
+            <h3>Defina seu mês</h3>
+            <p>Informe sua renda, o total de contas fixas e quanto quer guardar. O bot calcula o teto mensal para os gastos.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">02</span>
+            <div class="step-icon icon-note" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M10 9h20a3 3 0 0 1 3 3v13a3 3 0 0 1-3 3H19l-8 5v-5a3 3 0 0 1-4-3V12a3 3 0 0 1 3-3Z"/><path d="M13 16h14M13 21h9"/></svg></div>
+            <h3>Anote quando gastar</h3>
+            <p>Escreva algo como “gastei R$ 50 no almoço”. O lançamento entra na categoria correspondente.</p>
+          </article>
+          <article class="step-card">
+            <span class="step-number">03</span>
+            <div class="step-icon icon-progress" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M8 31V19M17 31V12M26 31V22M35 31V7"/><path d="m8 15 9-8 9 7 9-9"/></svg></div>
+            <h3>Ajuste suas caixinhas</h3>
+            <p>Veja o saldo do mês, mude os limites e acompanhe metas como uma viagem ou uma reserva.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-space envelopes-section" id="caixinhas">
+      <div class="container envelope-layout">
+        <div class="envelope-copy">
+          <p class="eyebrow">Cada real tem um lugar</p>
+          <h2>Caixinhas flexíveis, feitas para a sua vida.</h2>
+          <p>Comece com uma divisão sugerida e ajuste os valores para o que realmente importa para você. O bot impede que os limites das categorias ultrapassem o teto mensal.</p>
+          <a class="text-link" href="#comandos">Ver como ajustar uma categoria <span aria-hidden="true">→</span></a>
+          <p class="fine-print">Percentuais iniciais são apenas um ponto de partida — não são uma recomendação financeira.</p>
+        </div>
+        <div class="envelope-board">
+          <div class="board-heading"><div><span class="board-kicker">EXEMPLO DO MÊS</span><h3>Seu dinheiro organizado</h3></div><span class="board-month">valores ilustrativos</span></div>
+          <div class="envelope-row"><div class="envelope-label"><span class="category-dot dot-market"></span><span>Mercado</span></div><div class="envelope-track"><span style="width:68%"></span></div><div class="envelope-value">R$ 680</div></div>
+          <div class="envelope-row"><div class="envelope-label"><span class="category-dot dot-move"></span><span>Transporte</span></div><div class="envelope-track"><span style="width:48%"></span></div><div class="envelope-value">R$ 255</div></div>
+          <div class="envelope-row"><div class="envelope-label"><span class="category-dot dot-fun"></span><span>Lazer</span></div><div class="envelope-track"><span style="width:55%"></span></div><div class="envelope-value">R$ 340</div></div>
+          <div class="envelope-row"><div class="envelope-label"><span class="category-dot dot-trip"></span><span>Viagem</span></div><div class="envelope-track"><span style="width:36%"></span></div><div class="envelope-value">R$ 255</div></div>
+          <div class="envelope-row"><div class="envelope-label"><span class="category-dot dot-other"></span><span>Outros</span></div><div class="envelope-track"><span style="width:28%"></span></div><div class="envelope-value">R$ 170</div></div>
+          <div class="board-foot"><span class="board-foot-icon" aria-hidden="true">✳</span><span>Você pode mudar cada valor a qualquer momento.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-space goals-section" id="metas">
+      <div class="container goal-layout">
+        <div class="goal-card-large">
+          <div class="goal-sun" aria-hidden="true"></div>
+          <span class="goal-label">UMA META, UM PLANO</span>
+          <h3>São Paulo</h3>
+          <p>Um passeio no horizonte fica mais fácil de planejar quando você sabe quanto guardar por mês.</p>
+          <div class="goal-amounts"><div><span>Já guardado</span><strong>R$ 340</strong></div><div><span>Meta</span><strong>R$ 900</strong></div></div>
+          <div class="goal-progress goal-progress-large"><span></span></div>
+          <div class="goal-monthly"><span>Ritmo sugerido</span><strong>R$ 140 <small>/ mês</small></strong></div>
+          <span class="illustration-caption">Exemplo ilustrativo</span>
+        </div>
+        <div class="goal-copy">
+          <p class="eyebrow">Planos também cabem no orçamento</p>
+          <h2>Do “quero viajar” ao próximo passo.</h2>
+          <p>Crie uma meta com valor e data. O bot calcula uma referência de quanto guardar por mês e acompanha as contribuições que você anotar — sem fazer transferências.</p>
+          <div class="goal-command"><code>/meta São Paulo 900 2026-12-20</code><span>criar uma meta</span></div>
+          <div class="goal-command"><code>/guardar 100 São Paulo</code><span>anotar que guardou</span></div>
+          <p class="fine-print">O valor mensal é uma divisão matemática do objetivo pelo prazo; cabe a você decidir se funciona para sua realidade.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-space commands-section" id="comandos">
+      <div class="container">
+        <div class="section-heading section-heading-row">
+          <div><p class="eyebrow">Conversa do seu jeito</p><h2>Comandos diretos. Respostas úteis.</h2></div>
+          <p>Você pode usar os atalhos ou escrever uma frase simples para registrar uma despesa.</p>
+        </div>
+        <div class="commands-grid">
+          <article class="command-card command-featured"><span class="command-type">REGISTRAR</span><div class="command-bubble">gastei R$ 50 no almoço</div><h3>O gasto vai para a categoria certa.</h3><p>O exemplo “almoço” entra em mercado. A resposta mostra o saldo restante no mês e na caixinha.</p></article>
+          <article class="command-card"><span class="command-type">VER O MÊS</span><div class="command-line"><code>/saldo</code><button class="copy-button" type="button" data-copy="/saldo">Copiar</button></div><h3>Quanto ainda posso gastar?</h3><p>Resumo do teto mensal, gastos anotados e saldo de cada categoria.</p></article>
+          <article class="command-card"><span class="command-type">AJUSTAR</span><div class="command-line"><code>/caixinha mercado 800</code><button class="copy-button" type="button" data-copy="/caixinha mercado 800">Copiar</button></div><h3>Personalize seus limites.</h3><p>Ajuste categorias sem deixar a soma ultrapassar o orçamento total definido.</p></article>
+          <article class="command-card"><span class="command-type">PLANEJAR</span><div class="command-line"><code>/meta São Paulo 900 2026-12-20</code><button class="copy-button" type="button" data-copy="/meta São Paulo 900 2026-12-20">Copiar</button></div><h3>Transforme planos em metas.</h3><p>Veja quanto falta e uma estimativa mensal até a data escolhida.</p></article>
+        </div>
+        <p class="copy-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="section-space privacy-section" id="privacidade">
+      <div class="container privacy-panel">
+        <div class="privacy-main">
+          <p class="eyebrow eyebrow-light">Privacidade sem complicação</p>
+          <h2>Seu orçamento é seu.<br><span>O bot só ajuda a organizar.</span></h2>
+          <p>O projeto foi pensado para uma única pessoa. Não pede acesso ao banco, não movimenta dinheiro e não precisa de senha bancária.</p>
+        </div>
+        <div class="privacy-points">
+          <div class="privacy-point"><span class="privacy-number">01</span><div><strong>Acesso limitado</strong><p>Depois do pareamento, só a conta autorizada pode usar o bot.</p></div></div>
+          <div class="privacy-point"><span class="privacy-number">02</span><div><strong>Dados essenciais</strong><p>Valores, categorias, datas e descrições curtas ficam no banco do projeto.</p></div></div>
+          <div class="privacy-point"><span class="privacy-number">03</span><div><strong>Sem transferência</strong><p>“Guardar” apenas registra o valor informado; o dinheiro continua onde está.</p></div></div>
+        </div>
+        <p class="privacy-note">As mensagens também permanecem no seu chat do Telegram. Não envie senhas, dados de cartão, códigos de autenticação ou extratos.</p>
+      </div>
+    </section>
+
+    <section class="section-space cost-section" id="custos">
+      <div class="container cost-layout">
+        <div><p class="eyebrow">Um projeto pessoal</p><h2>Feito para começar sem mensalidade.</h2><p>O bot usa a Bot API gratuita do Telegram. A hospedagem Vercel Hobby e o banco Neon Free podem começar nos planos gratuitos para uso pessoal.</p></div>
+        <div class="cost-note"><span class="cost-icon" aria-hidden="true">↗</span><div><strong>Gratuito não significa ilimitado.</strong><p>Se os limites gratuitos forem atingidos, Vercel ou Neon podem pausar o serviço. Sem cartão cadastrado, não há cobrança automática; o bot pode ficar temporariamente indisponível. Regras e limites podem mudar.</p><div class="source-links" aria-label="Fontes oficiais"><a href="https://core.telegram.org/bots/api" target="_blank" rel="noopener noreferrer">Telegram Bot API</a><a href="https://botfather.telegram.org/" target="_blank" rel="noopener noreferrer">Telegram APIs</a><a href="https://vercel.com/docs/plans/hobby" target="_blank" rel="noopener noreferrer">Vercel Hobby</a><a href="https://neon.com/docs/introduction/plans" target="_blank" rel="noopener noreferrer">Planos Neon</a></div></div></div>
+      </div>
+    </section>
+
+    <section class="section-space getting-started" id="comecar">
+      <div class="container">
+        <div class="section-heading section-heading-centered">
+          <p class="eyebrow">Da ideia ao primeiro lançamento</p>
+          <h2>O que falta para colocar o bot no ar?</h2>
+          <p>Este é um projeto pessoal em preparação. O bot ainda precisa ser configurado antes do primeiro uso.</p>
+        </div>
+        <div class="setup-grid">
+          <article class="setup-step"><span class="setup-index">01</span><h3>Crie o bot</h3><p>Use o <a href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> no Telegram e guarde o token em local seguro.</p></article>
+          <article class="setup-step"><span class="setup-index">02</span><h3>Prepare o banco</h3><p>Crie um banco Postgres no Neon Free. O projeto cria as tabelas quando recebe a primeira mensagem.</p></article>
+          <article class="setup-step"><span class="setup-index">03</span><h3>Publique o código</h3><p>Implante o projeto na Vercel Hobby e configure o token e os segredos como variáveis privadas.</p></article>
+          <article class="setup-step"><span class="setup-index">04</span><h3>Converse em particular</h3><p>Registre o webhook, envie <code>/start SEU_CODIGO_DE_PAREAMENTO</code> uma vez e depois <code>/configurar</code>.</p></article>
+        </div>
+        <div class="setup-callout"><span class="setup-callout-icon" aria-hidden="true">i</span><p><strong>Importante:</strong> nunca publique ou envie o token do bot, o código de pareamento ou a senha do banco. O site não pede nem armazena essas credenciais.</p></div>
+      </div>
+    </section>
+
+    <section class="closing-cta">
+      <div class="container closing-inner">
+        <div><p class="eyebrow eyebrow-light">Um passo de cada vez</p><h2>Mais clareza para escolher<br>o que vem depois.</h2></div>
+        <a class="button button-light" href="#topo">Voltar ao início <span aria-hidden="true">↑</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <a class="brand footer-brand" href="#topo">
+        <svg class="brand-mark" viewBox="0 0 48 48" aria-hidden="true"><rect x="4" y="7" width="40" height="34" rx="11" fill="currentColor" opacity=".12"/><path d="M13 17h10v14H13zM25 17h10v8H25zM25 27h10v4H25z" fill="currentColor"/><path d="M13 14.5h22" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+        <span>caixinhas</span>
+      </a>
+      <p>Um projeto pessoal de organização financeira.<br>Sem banco, sem transferências, sem julgamento.</p>
+      <a class="footer-link" href="#comecar">Como ativar <span aria-hidden="true">↗</span></a>
+    </div>
+    <div class="container footer-bottom"><span>© <span id="year">2026</span> Caixinhas</span><span>Valores demonstrativos são exemplos, não dados reais.</span></div>
+  </footer>
+</body>
+</html>
