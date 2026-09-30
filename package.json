@@ -7,10 +7,14 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "echo 'No build step required'",
     "test": "node --test",
     "set-webhook": "node scripts/set-webhook.js"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2"
+    "@neondatabase/serverless": "^1.0.2",
+    "express": "^5.2.1"
   }
 }

@@ -1,0 +1,9 @@
+{
+  "name": "Caixinhas",
+  "description": "Registre gastos pelo Telegram, acompanhe seu orçamento do mês e planeje objetivos com caixinhas simples e ajustáveis.",
+  "prompt": "telegram caixinhas bot",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
