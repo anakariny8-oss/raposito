@@ -189,34 +189,69 @@ async function startSetup(sql, monthKey) {
 }
 
 async function continueSetup(sql, config, monthKey, text) {
-  if (config.setup_step === "income") {
-    const parsed = parseIncomeText(text);
-    if (!parsed || !parsed.items.length || parsed.totalCents <= 0) {
-      if (/sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale|renda|ganho|extra|mais/i.test(text)) {
-        return "Entendi que sua renda tem salário, auxílio e outros ganhos! 🦊\nPara somarmos tudo no orçamento, envie os valores juntos, por exemplo:\n• 3500 salário e 800 alimentação\n• salário 3500 auxílio alimentação 800\n• salário 3500, alimentação 800, extra 400\n\nQual é o valor do seu salário e benefícios?";
-      }
-      return "Não consegui ler o valor da renda. Envie um valor em reais (ex: 3500) ou detalhe as fontes somadas (ex: 3500 salário + 800 alimentação).";
-    }
+  const { today } = monthInfo();
+  const parsedIncome = parseIncomeText(text);
+  const isIncomeMention = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale|vr|va|renda|ganho|recebi|ganhei|freela|bico|extra|benef[ií]cio)/i.test(text);
 
-    const { today } = monthInfo();
-    for (const item of parsed.items) {
+  // If user provides or adds more income (at ANY setup step!)
+  if (isIncomeMention && parsedIncome && parsedIncome.items.length > 0) {
+    for (const item of parsedIncome.items) {
       await sql`
         INSERT INTO incomes (amount_cents, source, received_at)
         VALUES (${item.amountCents}, ${item.source}, ${today}::date)
       `;
     }
+    const allIncomes = await sql`
+      SELECT id, amount_cents, source, received_at
+      FROM incomes
+      WHERE received_at >= ${monthKey}::date AND received_at < (${monthKey}::date + INTERVAL '1 month')
+    `;
+    const totalIncomeCents = allIncomes.reduce((acc, r) => acc + Number(r.amount_cents || 0), 0);
+    const summaryList = allIncomes.map((i) => `• ${i.source}: ${formatBRL(i.amount_cents)}`).join("\n");
 
+    if (config.setup_step === "income" || !config.income_cents) {
+      await sql`
+        UPDATE monthly_configs
+        SET income_cents = ${totalIncomeCents}, setup_step = 'fixed'
+        WHERE month_key = ${monthKey}::date
+      `;
+      return `Renda mensal registrada: ${formatBRL(totalIncomeCents)}.\nDetalhamento:\n${summaryList}\n\nAgora: quanto você paga, em média, de contas fixas por mês no total? Se não tiver, envie 0.`;
+    }
+
+    // User is on 'fixed' or 'savings' step and added more income (e.g. "acrescenta mais 1700 de renda de auxilio alimentação")
     await sql`
       UPDATE monthly_configs
-      SET income_cents = ${parsed.totalCents}, setup_step = 'fixed'
+      SET income_cents = ${totalIncomeCents}
       WHERE month_key = ${monthKey}::date
     `;
 
-    const summaryParts = parsed.items.length > 1
-      ? `\nDetalhamento:\n${parsed.items.map(i => `• ${i.source}: ${formatBRL(i.amountCents)}`).join("\n")}`
-      : "";
+    if (config.setup_step === "fixed") {
+      return `🦊 Acrescentei ${parsedIncome.items.map((i) => `${formatBRL(i.amountCents)} (${i.source})`).join(", ")} à sua renda!\n\nRenda total do mês atualizada: ${formatBRL(totalIncomeCents)}.\nDetalhamento:\n${summaryList}\n\nAgora: quanto você paga, em média, de contas fixas por mês no total? Se não tiver, envie 0.`;
+    }
 
-    return `Renda mensal registrada: ${formatBRL(parsed.totalCents)}.${summaryParts}\n\nAgora: quanto você paga, em média, de contas fixas por mês no total? Se não tiver, envie 0.`;
+    if (config.setup_step === "savings") {
+      return `🦊 Acrescentei ${parsedIncome.items.map((i) => `${formatBRL(i.amountCents)} (${i.source})`).join(", ")} à sua renda!\n\nRenda total do mês atualizada: ${formatBRL(totalIncomeCents)}.\nDetalhamento:\n${summaryList}\n\nContas fixas atuais: ${formatBRL(Number(config.fixed_cents || 0))}.\nQuanto quer separar por mês para guardar? Se não souber, envie 0.`;
+    }
+  }
+
+  if (config.setup_step === "income") {
+    if (isIncomeMention) {
+      return "Entendi que sua renda tem salário, auxílio e outros ganhos! 🦊\nPara somarmos tudo no orçamento, envie os valores juntos, por exemplo:\n• 1600 salário e 1700 alimentação\n• 3500 salário e 800 alimentação\n\nQual é o valor do seu salário e benefícios?";
+    }
+    const cents = parseMoneyCents(text);
+    if (cents !== null && cents > 0) {
+      await sql`
+        INSERT INTO incomes (amount_cents, source, received_at)
+        VALUES (${cents}, 'Renda principal', ${today}::date)
+      `;
+      await sql`
+        UPDATE monthly_configs
+        SET income_cents = ${cents}, setup_step = 'fixed'
+        WHERE month_key = ${monthKey}::date
+      `;
+      return `Renda mensal registrada: ${formatBRL(cents)}.\n\nAgora: quanto você paga, em média, de contas fixas por mês no total? Se não tiver, envie 0.`;
+    }
+    return "Não consegui ler o valor da renda. Envie um valor em reais (ex: 3500) ou detalhe as fontes somadas (ex: 1600 salário + 1700 alimentação).";
   }
 
   const amount = parseMoneyCents(text, { allowZero: true });
@@ -228,13 +263,14 @@ async function continueSetup(sql, config, monthKey, text) {
     await sql`UPDATE monthly_configs SET fixed_cents = ${amount}, setup_step = 'savings' WHERE month_key = ${monthKey}::date`;
     return "Quanto quer separar por mês para guardar? Se ainda não sabe, envie 0. Isso é só um plano; não faço transferências.";
   }
+
   if (config.setup_step === "savings") {
     const income = Number(config.income_cents || 0);
     const fixed = Number(config.fixed_cents || 0);
     const spendingLimit = income - amount;
     const variable = spendingLimit - fixed;
     if (spendingLimit <= 0 || variable < 0) {
-      return `Esses valores não fecham: renda ${formatBRL(income)}, contas fixas ${formatBRL(fixed)} e valor para guardar ${formatBRL(amount)}. Envie outro valor mensal para guardar, ou use /configurar para recomeçar.`;
+      return `Esses valores não fecham: renda ${formatBRL(income)}, contas fixas ${formatBRL(fixed)} e valor para guardar ${formatBRL(amount)}.\n\n💡 Você pode:\n• Enviar outro valor para guardar (ex: 0)\n• Acrescentar renda: “acrescenta mais 1700 de auxílio alimentação”\n• Ou usar /configurar para recomeçar.`;
     }
     await sql`
       UPDATE monthly_configs
@@ -244,6 +280,7 @@ async function continueSetup(sql, config, monthKey, text) {
     await replaceEnvelopes(sql, monthKey, defaultEnvelopes(spendingLimit, fixed));
     return `Orçamento configurado para este mês.\nRenda total: ${formatBRL(income)}\nContas fixas reservadas: ${formatBRL(fixed)}\nPlanejado para guardar: ${formatBRL(amount)}\nTeto total de gastos: ${formatBRL(spendingLimit)}\n\nCaixinhas iniciais: contas = ${formatBRL(fixed)}; mercado 40%, transporte 15%, lazer 20%, viagem 15% e outros 10% do valor variável. São sugestões iniciais: ajuste com /caixinha nome valor.\n\nUse /saldo para consultar, /renda para ver seus ganhos ou /ajuda para ver os comandos.`;
   }
+
   return "Configuração do orçamento não encontrada. Envie /configurar para começar novamente.";
 }
 
@@ -251,6 +288,21 @@ async function addIncome(sql, monthKey, today, text) {
   const parsed = parseIncomeText(text);
   if (!parsed || !parsed.items.length || parsed.totalCents <= 0) {
     return "Não consegui identificar o valor do ganho. Exemplo: “recebi 800 alimentação” ou “/recebi 500 freela”.";
+  }
+
+  const existingIncomes = await sql`
+    SELECT id, amount_cents, source, received_at
+    FROM incomes
+    WHERE received_at >= ${monthKey}::date AND received_at < (${monthKey}::date + INTERVAL '1 month')
+  `;
+  const config = await ensureMonth(sql, monthKey);
+
+  // If there was a baseline income in config not yet in incomes table, preserve it
+  if (!existingIncomes.length && config.income_cents && Number(config.income_cents) > 0) {
+    await sql`
+      INSERT INTO incomes (amount_cents, source, received_at)
+      VALUES (${Number(config.income_cents)}, 'Renda inicial / Salário', ${today}::date)
+    `;
   }
 
   for (const item of parsed.items) {
@@ -264,9 +316,9 @@ async function addIncome(sql, monthKey, today, text) {
     SELECT id, amount_cents, source, received_at
     FROM incomes
     WHERE received_at >= ${monthKey}::date AND received_at < (${monthKey}::date + INTERVAL '1 month')
+    ORDER BY received_at, id
   `;
   const totalIncomeCents = allIncomes.reduce((acc, r) => acc + Number(r.amount_cents || 0), 0);
-  const config = await ensureMonth(sql, monthKey);
 
   const fixed = Number(config.fixed_cents || 0);
   const savings = Number(config.savings_cents || 0);
@@ -283,8 +335,10 @@ async function addIncome(sql, monthKey, today, text) {
     await replaceEnvelopes(sql, monthKey, defaultEnvelopes(updatedLimit, fixed));
   }
 
-  const itemsDesc = parsed.items.map(i => `${formatBRL(i.amountCents)} (${i.source})`).join(", ");
-  return `💰 Ganho anotado: ${itemsDesc}!\nRenda total do mês: ${formatBRL(totalIncomeCents)}.\nTeto total de gastos atualizado para: ${formatBRL(updatedLimit)}.\n\nConsulte /renda para ver todos os ganhos ou /saldo para o resumo.`;
+  const addedItemsDesc = parsed.items.map((i) => `${formatBRL(i.amountCents)} (${i.source})`).join(", ");
+  const allSourcesList = allIncomes.map((i) => `• ${i.source}: ${formatBRL(i.amount_cents)}`).join("\n");
+
+  return `💰 Ganho anotado: ${addedItemsDesc}!\n\nRenda total acumulada do mês: ${formatBRL(totalIncomeCents)}.\nFontes registradas:\n${allSourcesList}\n\nTeto total de gastos atualizado para: ${formatBRL(updatedLimit)}.\nConsulte /renda ou /saldo para o resumo completo.`;
 }
 
 async function listIncomes(sql, monthKey) {
@@ -581,7 +635,7 @@ async function handleText(sql, message) {
   }
 
   // Handle "acrescente isso" / "adicione isso" / "pode acrescentar"
-  const isAcrescenteIsso = /^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescente|acrescentar|adicione|adicionar|coloque|colocar|inclua|incluir|some|somar|bota|botar|insira|inserir|registre|registrar)(?:\s+(?:isso|isso\s+a[ií]|a[ií]))?(?:\s+por\s+favor)?[.!]?$/i.test(text);
+  const isAcrescenteIsso = /^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescent[ae]|acrescentar|adicion[ae]|adicionar|coloqu?e|colocar|coloca|inclu[ai]|incluir|som[ae]|somar|bot[ae]|botar|inser[ei]|inserir|registr[ae]|registrar)(?:\s+(?:mais|isso|isso\s+a[ií]|a[ií]))?(?:\s+por\s+favor)?[.!]?$/i.test(text);
 
   if (isAcrescenteIsso) {
     const ctx = chatContexts.get(chatId);
@@ -613,7 +667,7 @@ async function handleText(sql, message) {
       }
       chatContexts.delete(chatId);
       const itemsDesc = ctx.parsedIncome.items.map(i => `${formatBRL(i.amountCents)} (${i.source})`).join(", ");
-      return `🦊 Feito! Acrescentei ${itemsDesc} aos seus ganhos!\n\nRenda total do mês: ${formatBRL(totalIncomeCents)}.\nTeto total de gastos atualizado para: ${formatBRL(updatedLimit)}.\n\nConsulte /renda para ver todos os ganhos ou /saldo para o resumo.`;
+      return `🦊 Feito! Acrescentei ${itemsDesc} aos seus ganhos!\n\nRenda total acumulada do mês: ${formatBRL(totalIncomeCents)}.\nTeto total de gastos atualizado para: ${formatBRL(updatedLimit)}.\n\nConsulte /renda para ver todos os ganhos ou /saldo para o resumo.`;
     }
 
     if (ctx && ctx.parsedExpense && ctx.parsedExpense.amountCents && ctx.parsedExpense.category) {
@@ -633,11 +687,29 @@ async function handleText(sql, message) {
   }
 
   // Handle "acrescente [conteúdo]" / "adicione [conteúdo]" / "coloque [conteúdo]"
-  const addPrefixMatch = text.match(/^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescente|acrescentar|adicione|adicionar|coloque|colocar|inclua|incluir|some|somar|bota|botar|insira|inserir|registre|registrar)(?:\s+(?:isso|isso\s+a[ií]|a[ií]))?(?:\s*[:,-])?\s+(.+)$/i);
+  const addPrefixMatch = text.match(/^(?:por\s+favor\s+)?(?:pode\s+)?(?:acrescent[ae]|acrescentar|adicion[ae]|adicionar|coloqu?e|colocar|coloca|inclu[ai]|incluir|som[ae]|somar|bot[ae]|botar|inser[ei]|inserir|registr[ae]|registrar)(?:\s+(?:mais|isso|isso\s+a[ií]|a[ií]))?(?:\s*[:,-])?\s+(.+)$/i);
   if (addPrefixMatch) {
     const cleanAction = addPrefixMatch[1].trim();
 
-    // Check if adding to caixinha (envelope)
+    // 1. Check if adding to contas fixas
+    const fixedMatch = cleanAction.match(/^(?:(?:nas?|para\s+as?|em)\s+contas?\s+fixas?\s+(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)|(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?)\s+(?:nas?|para\s+as?|em)\s+contas?\s+fixas?|contas?\s+fixas?\s+(?:r\$\s*)?((?:\d{1,3}(?:\.\d{3})+|\d+)(?:[.,]\d{1,2})?))$/i);
+    if (fixedMatch) {
+      const amountToAdd = parseMoneyCents(fixedMatch[1] || fixedMatch[2] || fixedMatch[3]);
+      if (amountToAdd !== null && amountToAdd > 0) {
+        const newFixed = Number(config.fixed_cents || 0) + amountToAdd;
+        await sql`
+          UPDATE monthly_configs
+          SET fixed_cents = ${newFixed}
+          WHERE month_key = ${monthKey}::date
+        `;
+        if (config.spending_limit_cents) {
+          await replaceEnvelopes(sql, monthKey, defaultEnvelopes(Number(config.spending_limit_cents), newFixed));
+        }
+        return `🦊 Acrescentei ${formatBRL(amountToAdd)} nas suas contas fixas.\nTotal de contas fixas reservadas: ${formatBRL(newFixed)}.`;
+      }
+    }
+
+    // 2. Check if adding to caixinha (envelope)
     const caixinhaDirect = cleanAction.match(/^(?:mais\s+)?(?:uma\s+)?(?:caixinha|envelope)\s+(.+)$/i);
     if (caixinhaDirect) {
       return setEnvelope(sql, monthKey, caixinhaDirect[1], config);
@@ -657,7 +729,7 @@ async function handleText(sql, message) {
       }
     }
 
-    // Check if adding to meta (savings goal)
+    // 3. Check if adding to meta (savings goal)
     const goalDirect = cleanAction.match(/^meta\s+(.+)$/i);
     if (goalDirect) {
       return createOrUpdateGoal(sql, goalDirect[1], today);
@@ -672,16 +744,16 @@ async function handleText(sql, message) {
       }
     }
 
-    // Check if income
+    // 4. Check if income
     const parsedAddIncome = parseIncomeText(cleanAction);
-    const hasIncomeClue = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale|vr|va|renda|ganho|freela|bico|extra|comiss[aã]o|b[oô]nus)/i.test(cleanAction);
-    const hasExpenseClue = /(?:gasto|despesa|paguei|comprei|almo[cç]o|jantar|lanche|uber|t[aá]xi|gasolina|farm[aá]cia)/i.test(cleanAction);
+    const hasIncomeClue = /(?:sal[aá]riio|sal[aá]rio|aux[ií]lio|alimenta[cç][aã]o|vale|vr|va|renda|ganho|freela|bico|extra|comiss[aã]o|b[oô]nus|benef[ií]cio|investimento|rendimento|dividendo)/i.test(cleanAction);
+    const hasExpenseClue = /(?:gasto|despesa|paguei|comprei|almo[cç]o|jantar|lanche|uber|t[aá]xi|gasolina|farm[aá]cia|mercado|cinema|bar)/i.test(cleanAction);
 
     if (parsedAddIncome && parsedAddIncome.items && parsedAddIncome.items.length > 0 && (hasIncomeClue || !hasExpenseClue)) {
       return addIncome(sql, monthKey, today, cleanAction);
     }
 
-    // Check if expense
+    // 5. Check if expense
     const parsedAddExpense = parseExpenseText(cleanAction, envelopes.map((item) => item.name));
     if (parsedAddExpense && parsedAddExpense.amountCents && parsedAddExpense.category) {
       if (config.spending_limit_cents === null || config.spending_limit_cents === undefined) {
